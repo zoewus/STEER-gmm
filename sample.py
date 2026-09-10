@@ -43,7 +43,7 @@ METHOD_CHOICES = ["steer", "tsr", "cns", "mcmc"]
 # Number of ULA/Langevin corrector repeats at each fixed noise level for
 # method="mcmc" before annealing to the next (lower) t. Edit directly here.
 MCMC_STEPS_PER_LEVEL = 5
-
+MCMC_STEP_SIZE = 1e-4
 
 @torch.no_grad()
 def ddpm_sample(
@@ -70,23 +70,35 @@ def ddpm_sample(
         beta_t = schedule.betas[t_index]
         alpha_t = schedule.alphas[t_index]
         alpha_bar_t = schedule.alpha_bars[t_index]
-
         if method == "mcmc":
-            # Literal ULA (eqn A10): repeat the *unmodified* diffusion-reverse
-            # update at this fixed t_index MCMC_STEPS_PER_LEVEL times, scaling
-            # the injected noise by an extra sqrt(2) each repeat, before the
-            # outer loop anneals to t_index - 1.
+            # Fixed-step annealed Langevin dynamics at the current noise level.
+            # eta is the Langevin step size.
+            eta = MCMC_STEP_SIZE
+
             for _ in range(MCMC_STEPS_PER_LEVEL):
                 eps_theta = model(x_ladder, t)
-                coef = beta_t / torch.sqrt(1.0 - alpha_bar_t)
-                mean = (x_ladder - coef * eps_theta) / torch.sqrt(alpha_t)
-                if t_index > 0:
-                    z = torch.randn(x_ladder.shape, device=device, generator=generator) if generator is not None \
-                        else torch.randn_like(x_ladder)
-                    sigma_t = torch.sqrt(beta_t)
-                    x_ladder = mean + math.sqrt(2.0) * sigma_t * z
+
+                # Score corresponding to epsilon prediction:
+                # score ≈ ∇_x log p_t(x)
+                score = -eps_theta / torch.sqrt(1.0 - alpha_bar_t)
+
+                if generator is not None:
+                    z = torch.randn(
+                        x_ladder.shape,
+                        device=device,
+                        dtype=x_ladder.dtype,
+                        generator=generator,
+                    )
                 else:
-                    x_ladder = mean  # no noise injected on the final step
+                    z = torch.randn_like(x_ladder)
+
+                # Langevin update:
+                x_ladder = (
+                    x_ladder
+                    + eta * score
+                    + math.sqrt(2.0 * eta) * z
+                )
+
             continue
 
         eps_theta = model(x_ladder, t)

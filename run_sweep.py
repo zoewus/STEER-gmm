@@ -30,15 +30,16 @@ SEEDS = [1, 50, 100, 150, 200]
 # STEER's raw hit count near the global mode far above TSR/CNS's (roughly
 # 7-15x in aggregate) -- see the KDE-peak sweep in NOTES.md.
 LAM_START = 0.3
-LAM_END = 9.6
+LAM_END = 1.0
 TEMPERING_SEED = 150
 DENSITY_VMAX = 0.15  # much lower than the "generic" default (0.45): saturates the
                       # dense easy cluster, but makes the global mode's much fainter
                       # KDE bump -- especially STEER's -- actually visible as color
 METHODS = [
-    ("steer", 6),
-    ("tsr", 1),
-    ("cns", 1),
+    # ("steer", 6),
+    # ("tsr", 1),
+    # ("cns", 1),
+    ("mcmc", 1),
 ]
 
 
