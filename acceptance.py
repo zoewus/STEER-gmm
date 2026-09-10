@@ -144,7 +144,7 @@ def swap(x_ladder, t_val, a_bar, lam_start, lam_end, n_replicas, batch_size,
 
         # Per-walker acceptance energy, reduced over the coordinate
         # dimension only -> shape (batch_size,), ONE decision per walker.
-        integral = -2 * tsr_diff * ((score_tau + score_s) * (x_tau - x_s)).sum(dim=-1) / x_tau.shape[-1]
+        integral = - tsr_diff * ((score_tau + score_s) * (x_tau - x_s)).sum(dim=-1) / x_tau.shape[-1]
         log_ratio = torch.clamp(integral, max=0.0)
         accept = torch.exp(log_ratio)  # (batch_size,)
 
